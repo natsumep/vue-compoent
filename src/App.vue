@@ -1,5 +1,5 @@
 <template>
-  <div style="margin: 0 auto; width: 700px; border: 1px solid red">
+  <!-- <div style="margin: 0 auto; width: 700px; border: 1px solid red">
     <a-form
       :formConfig="formConfig"
       :formItem="formItems"
@@ -8,7 +8,8 @@
       @on-submit-form="submitFrom"
       @on-submit-error="submitFrom"
     ></a-form>
-  </div>
+  </div> -->
+  <router-view></router-view>
 </template>
 
 <script lang="ts">

@@ -1,13 +1,14 @@
 <template>
   <el-form
+    class="a-form"
     :model="formValue"
     ref="ruleForm"
-    :inline="formConfig.inline"
-    :label-position="formConfig.labelPosition"
-    :label-width="formConfig.labelWidth"
-    :hide-required-asterisk="formConfig.hideRequiredAsterisk"
-    :show-message="formConfig.showMessage"
-    :size="formConfig.size"
+    :inline="formConfigVal.inline"
+    :label-position="formConfigVal.labelPosition"
+    :label-width="formConfigVal.labelWidth"
+    :hide-required-asterisk="formConfigVal.hideRequiredAsterisk"
+    :show-message="formConfigVal.showMessage"
+    :size="formConfigVal.size"
     @submit.native.prevent
   >
     <template v-for="item in formItem">
@@ -18,28 +19,33 @@
         :rules="item.rules"
         :required="item.required"
         :error="item.error"
+        :class="item.class ? item.class : ''"
         :style="{
           display: item.type === 'hidden' ? 'none' : '',
-          width: item.width || 'auto',
+          width: item.itemWidth ? item.itemWidth : '',
         }"
       >
         <el-select
           v-if="item.type === 'select'"
           v-model="formValue[item.prop]"
           :placeholder="item.placeholder"
-          @change="item.change&&itemChange($event,formValue)"
+          :disabled="item.disabled"
+          @change="handleItemChange($event, item)"
+          :style="{ width: item.width || '' }"
         >
           <el-option
             v-for="i in item.item"
-            :label="item.label"
+            :label="i.label"
             :value="i.value"
             :key="i.value"
           ></el-option>
         </el-select>
         <el-checkbox-group
           v-else-if="item.type === 'checkbox'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
-          @change="item.change&&itemChange($event,formValue)"
+          :disabled="item.disabled"
+          @change="handleItemChange($event, item)"
         >
           <el-checkbox v-for="i in item.item" :label="i.value" :key="i.value">{{
             i.label
@@ -47,8 +53,10 @@
         </el-checkbox-group>
         <el-radio-group
           v-else-if="item.type === 'radio'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
-          @change="item.change&&itemChange($event,formValue)"
+          :disabled="item.disabled"
+          @change="handleItemChange($event, item)"
         >
           <el-radio v-for="i in item.item" :label="i.value" :key="i.value">{{
             i.label
@@ -56,61 +64,114 @@
         </el-radio-group>
         <el-date-picker
           v-else-if="item.type === 'time'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
-          type="daterange"
+          :disabled="item.disabled"
+          :type="item.dateType || 'daterange'"
           :clearable="false"
           align="right"
           unlink-panels
           range-separator="至"
           start-placeholder="开始日期"
           end-placeholder="结束日期"
-          :picker-options="pickerOptions"
-          @change="item.change&&itemChange($event,formValue)"
+          :picker-options="item.pickerOptions || pickerOptions"
+          @change="handleItemChange($event, item)"
         >
         </el-date-picker>
         <el-cascader
           v-else-if="item.type === 'cascader'"
           v-model="formValue[item.prop]"
+          :style="{ width: item.width || '' }"
           :options="item.options"
-          @change="item.change&&itemChange($event,formValue)"
-          :props="{ expandTrigger: item.trigger || 'hover' }"
+          :disabled="item.disabled"
+          @change="handleItemChange($event, item)"
+          :props="item.props || {}"
         ></el-cascader>
         <el-input
           v-else-if="item.type === 'password'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
+          :disabled="item.disabled"
           :placeholder="item.placeholder"
-          @change="item.change&&itemChange($event,formValue)"
+          @change="handleItemChange($event, item)"
           show-password
         ></el-input>
-        <div v-else-if="item.type === 'upload'">
-          <upload v-model="formValue[item.prop]"   @change="item.change&&itemChange($event,formValue)" :info="item.info"> </upload>
+        <el-input-number
+          v-else-if="item.type === 'number'"
+          :precision="item.precision"
+          :min="item.min"
+          :max="item.max"
+          :disabled="item.disabled"
+          :style="{ width: item.width || '' }"
+          v-model="formValue[item.prop]"
+          :placeholder="item.placeholder"
+          controls-position="right"
+          @change="handleItemChange($event, item)"
+        ></el-input-number>
+        <div
+          v-else-if="item.type === 'upload'"
+          :style="{ width: item.width || '' }"
+        >
+          <upload
+            v-model="formValue[item.prop]"
+            @change="handleItemChange($event, item)"
+            :info="item.info"
+          >
+          </upload>
         </div>
         <el-input
           v-else-if="item.type === 'search'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
           :placeholder="item.placeholder"
-          @change="item.change&&itemChange($event,formValue)"
+          :disabled="item.disabled"
+          @change="handleItemChange($event, item)"
         >
-          <el-button @click="submitForm" slot="append" icon="el-icon-search"></el-button>
+          <el-button
+            @click="handleBtnClick"
+            slot="append"
+            icon="el-icon-search"
+          ></el-button>
         </el-input>
         <el-input
-          v-else
+          v-else-if="item.type === 'textarea'"
+          :style="{ width: item.width || '' }"
           v-model="formValue[item.prop]"
           :placeholder="item.placeholder"
-          @change="item.change&&itemChange($event,formValue)"
+          :disabled="item.disabled"
+          type="textarea"
+          :rows="item.rows || 4"
+          :show-word-limit="!!item.maxLength"
+          :maxlength="item.maxLength || null"
+          @change="handleItemChange($event, item)"
+        ></el-input>
+        <el-input
+          v-else
+          :style="{ width: item.width || '' }"
+          v-model="formValue[item.prop]"
+          :placeholder="item.placeholder"
+          :disabled="item.disabled"
+          :show-word-limit="!!item.maxLength"
+          :maxlength="item.maxLength || null"
+          type="text"
+          @change="handleItemChange($event, item)"
         ></el-input>
       </el-form-item>
-
     </template>
-    <el-form-item>
-      <el-button type="primary" :loading='isLoading' :disabled="isLoading" v-if="formConfig.needSubmit" @click="submitForm" >提交</el-button>
+    <el-form-item v-if="formConfigVal.needSubmit">
+      <el-button
+        type="primary"
+        :loading="isLoading"
+        :disabled="isLoading"
+        @click="submitForm"
+        >{{ formConfigVal.submitName || "提交" }}</el-button
+      >
     </el-form-item>
-
   </el-form>
 </template>
 
 <script lang="ts">
-import { Component, Vue, Prop, Emit } from "vue-property-decorator";
+import { Component, Vue, Prop, Emit, Watch } from "vue-property-decorator";
 import Upload from "./Upload.vue";
 import { Form } from "element-ui";
 const formConfig: any = {
@@ -118,7 +179,7 @@ const formConfig: any = {
   labelPosition: "right",
   labelWidth: "80px",
   hideRequiredAsterisk: false,
-  showMessage: false,
+  showMessage: true,
   statusIcon: false,
   size: "small",
 };
@@ -150,18 +211,28 @@ export default class Home extends Vue {
     },
   })
   formValue: any;
-  @Emit()
-  onSubmitError(error:any){}
-  @Emit()
-  onSubmitForm(data: any){}
-  mounted() {
-    console.log(this);
+
+  @Watch("formConfig")
+  changeVal(data) {
+    this.formConfigVal = {
+      ...formConfig,
+      ...data,
+    };
   }
-  changeFile(arr:any,value: any){
+  @Emit()
+  onSubmitError(error: any) {}
+  @Emit()
+  onSubmitForm(data: any) {}
+  @Emit()
+  onFormChange(data: any) {}
+  formConfigVal = formConfig;
+  mounted() {
+    this.changeVal(this.formConfig);
+  }
+  changeFile(arr: any, value: any) {
     this.formValue[value] = arr;
   }
   updated() {
-    console.log(this);
   }
   pickerOptions = {
     shortcuts: [
@@ -194,8 +265,8 @@ export default class Home extends Vue {
       },
     ],
   };
-  submitForm(formName: any) {
-    (this.$refs.ruleForm as Form).validate((valid,error) => {
+  submitForm() {
+    (this.$refs.ruleForm as Form).validate((valid, error) => {
       if (valid) {
         this.onSubmitForm(this.formValue);
       } else {
@@ -204,10 +275,33 @@ export default class Home extends Vue {
       }
     });
   }
-  resetForm(formName: any) {
+  handleBtnClick() {
+    this.onFormChange(this.formValue);
+    this.submitForm();
+  }
+  resetForm() {
     (this.$refs.ruleForm as Form).resetFields();
+  }
+  async validate() {
+    return await (this.$refs.ruleForm as Form).validate();
+  }
+  handleItemChange(data, item: any) {
+    item.change &&
+      item.change(data, this.formValue, this.formItem, this.formConfig);
+    this.onFormChange(this.formValue);
   }
 }
 </script>
 
-<style lang="stylus"></style>
+<style scoped lang="less">
+.a-form {
+  /deep/ .el-date-editor .el-range-input {
+    width: 35%;
+  }
+}
+.a-form {
+  /deep/ .el-date-editor .el-range-separator {
+    width: 10%;
+  }
+}
+</style>

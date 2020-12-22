@@ -1,15 +1,14 @@
 <template>
-  <!-- <div style="margin: 0 auto; width: 700px; border: 1px solid red">
+  <div style="margin: 0 auto; width: 700px; border: 1px solid red">
     <a-form
       :formConfig="formConfig"
       :formItem="formItems"
       :isLoading="false"
-      :formValue="formValue"
       @on-submit-form="submitFrom"
       @on-submit-error="submitFrom"
     ></a-form>
-  </div> -->
-  <router-view></router-view>
+  </div>
+  <!-- <router-view></router-view> -->
 </template>
 
 <script lang="ts">

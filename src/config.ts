@@ -14,6 +14,7 @@ export const formItems: any = [
         label:"姓名",
         prop:"name",
         placeholder:"请输入姓名",
+        value:"12321",
         rules:[{ required: true, message: '请输入邮箱地址', trigger: 'blur' },]
     },
     {
@@ -21,6 +22,8 @@ export const formItems: any = [
         prop:"password",
         type:"password",
         required:true,
+        value:"12321",
+
         placeholder:"请输入姓名"
     },
     {
@@ -41,6 +44,7 @@ export const formItems: any = [
         prop:"check",
         required:true,
         type:"checkbox",
+        value:["a"],
         item:[
             {
                 label:"a",

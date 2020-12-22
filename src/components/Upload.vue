@@ -10,24 +10,28 @@
       :http-request="uploadFile"
       :file-list="fileList"
       :multiple="info.multiple || false"
-      :limit="info.limit || 10"
+      :limit="info.limit || 2"
     >
       <img v-if="imageUrl" :src="imageUrl" class="avatar" />
       <i v-else class="el-icon-plus avatar-uploader-icon"></i>
     </el-upload>
 
     <el-upload
+      ref="upload"
       v-else
       class="avatar-uploader"
       action="#"
-      list-type="picture-card"
-      :show-file-list="info.showFileList || true"
+      :list-type="info.listType || 'picture-card'"
+      :show-file-list="true"
       :before-upload="beforeAvatarUpload"
-      :accept="info.accept||'image/*'"
+      :accept="info.accept"
       :http-request="uploadFile"
       :file-list="fileList"
       :multiple="info.multiple || false"
       :limit="info.limit || 10"
+      :on-success="onSuccess"
+      :on-remove="onRemove"
+      :on-progress="onprogress"
     >
       <img v-if="imageUrl" :src="imageUrl" class="avatar" />
       <i v-else class="el-icon-plus avatar-uploader-icon"></i>
@@ -36,7 +40,14 @@
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue, Emit , Model ,Watch} from "vue-property-decorator";
+import {
+  Component,
+  Prop,
+  Vue,
+  Emit,
+  Model,
+  Watch,
+} from "vue-property-decorator";
 import { Message } from "element-ui";
 import { postFile } from "./post-file";
 
@@ -48,55 +59,91 @@ export default class Upload extends Vue {
     },
   })
   private info!: any;
-  private fileList:{name?:string,url:string}[] = [];
-  @Model ('change', {type: Array,default:[]})  value!: string[];
+  private fileList: { name?: string; url: string; [key: string]: any }[] = [];
+  @Model("change", { type: Array, default: [] }) value!: string[];
+  @Emit()
+  change(list: any) {}
 
-  // @Watch('value')
-  changeValue(newValue: string[]){
-    console.log(newValue);
-      this.fileList = newValue.map(url=>{
-          return {
-              url
-          }
-      })
+  @Watch("value")
+  changeValue(newValue: string[]) {
+    if (this.info.isHeader) {
+      this.imageUrl = newValue[0] || "";
+      this.fileList = newValue.map((url) => {
+        return {
+          url,
+        };
+      });
+    }
+    // this.fileList = newValue.map(url => {
+    //   return {
+    //     url
+    //   };
+    // });
   }
   mounted() {
-    this.changeValue(this.value); 
+    this.changeValue(this.value);
   }
   postFileSuccess(value: string) {
-    this.value.push(value)
+    if (this.info.isHeader) {
+      this.value.splice(0, this.value.length);
+      this.value.push(value);
+    }
+    // else{
+    //   this.value.push(value);
+    // }
     // this.fileList.push({url:value});
+  }
+  onSuccess(data, file, fileList) {
+    // console.log(arguments);
+    const index = fileList.findIndex((item) => item.uid === file.uid);
+    if (index > -1) {
+      fileList[index].url = data[0];
+    }
+    this.change(fileList);
+  }
+  onRemove() {
+    console.log(arguments);
+  }
+  onprogress() {
+    console.log(arguments);
   }
   imageUrl: string = "";
   // 自定义上传
   uploadFile(data: any) {
-    postFile.postFileToOss(data.file,{
-      successFn:(...data: any)=>{
-        this.postFileSuccess(data[0])
-        if(this.info.isHeader){
-          this.imageUrl = data[0];
-        }
-      },
-      errorFn(...data: any){
-        console.log(data);
-      }
+    return new Promise((a, b) => {
+      postFile.postFileToOss(data.file, {
+        successFn: (...data: any) => {
+          this.postFileSuccess(data[0]);
+          if (this.info.isHeader) {
+            this.imageUrl = data[0];
+          }
+          a(data);
+          // b()
+        },
+        errorFn(...data: any) {
+          console.log(data);
+          b();
+          this.$message.error("文件上传失败，请重试")
+        },
+      });
     });
-    console.log(arguments);
+
+    // console.log(arguments);
   }
   beforeAvatarUpload(file: File) {
-    if (file.type.indexOf("image/") == -1) {
+    if (this.info.isHeader && file.type.indexOf("image/") == -1) {
       Message.error("选择的文件不是图片");
       return false;
     }
-    const isLt2M = file.size / 1024 / 1024 < 100;
+    const isLt2M = file.size / 1024 / 1024 < 20;
     if (!isLt2M) {
-        Message.error("上传头像图片大小不能超过 100MB!");
-        return isLt2M;
+      Message.error("上传头像图片大小不能超过 20MB!");
+      return isLt2M;
     }
   }
 }
 </script>
-<style >
+<style>
 .avatar-uploader .el-upload {
   border: 1px dashed #d9d9d9;
   border-radius: 6px;
@@ -106,7 +153,7 @@ export default class Upload extends Vue {
 }
 
 .avatar-uploader .el-upload:hover {
-  border-color: #409EFF;
+  border-color: #409eff;
 }
 
 .avatar-uploader .avatar-uploader-icon {

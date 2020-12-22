@@ -1,7 +1,7 @@
 <template>
   <el-form
     class="a-form"
-    :model="formValue"
+    :model="formValue_"
     ref="ruleForm"
     :inline="formConfigVal.inline"
     :label-position="formConfigVal.labelPosition"
@@ -27,7 +27,7 @@
       >
         <el-select
           v-if="item.type === 'select'"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :placeholder="item.placeholder"
           :disabled="item.disabled"
           @change="handleItemChange($event, item)"
@@ -43,7 +43,7 @@
         <el-checkbox-group
           v-else-if="item.type === 'checkbox'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :disabled="item.disabled"
           @change="handleItemChange($event, item)"
         >
@@ -54,7 +54,7 @@
         <el-radio-group
           v-else-if="item.type === 'radio'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :disabled="item.disabled"
           @change="handleItemChange($event, item)"
         >
@@ -65,7 +65,7 @@
         <el-date-picker
           v-else-if="item.type === 'time'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :disabled="item.disabled"
           :type="item.dateType || 'daterange'"
           :clearable="false"
@@ -80,7 +80,7 @@
         </el-date-picker>
         <el-cascader
           v-else-if="item.type === 'cascader'"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :style="{ width: item.width || '' }"
           :options="item.options"
           :disabled="item.disabled"
@@ -90,7 +90,7 @@
         <el-input
           v-else-if="item.type === 'password'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :disabled="item.disabled"
           :placeholder="item.placeholder"
           @change="handleItemChange($event, item)"
@@ -103,7 +103,7 @@
           :max="item.max"
           :disabled="item.disabled"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :placeholder="item.placeholder"
           controls-position="right"
           @change="handleItemChange($event, item)"
@@ -113,7 +113,7 @@
           :style="{ width: item.width || '' }"
         >
           <upload
-            v-model="formValue[item.prop]"
+            v-model="formValue_[item.prop]"
             @change="handleItemChange($event, item)"
             :info="item.info"
           >
@@ -122,7 +122,7 @@
         <el-input
           v-else-if="item.type === 'search'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :placeholder="item.placeholder"
           :disabled="item.disabled"
           @change="handleItemChange($event, item)"
@@ -136,7 +136,7 @@
         <el-input
           v-else-if="item.type === 'textarea'"
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :placeholder="item.placeholder"
           :disabled="item.disabled"
           type="textarea"
@@ -148,7 +148,7 @@
         <el-input
           v-else
           :style="{ width: item.width || '' }"
-          v-model="formValue[item.prop]"
+          v-model="formValue_[item.prop]"
           :placeholder="item.placeholder"
           :disabled="item.disabled"
           :show-word-limit="!!item.maxLength"
@@ -174,6 +174,8 @@
 import { Component, Vue, Prop, Emit, Watch } from "vue-property-decorator";
 import Upload from "./Upload.vue";
 import { Form } from "element-ui";
+import { cloneDeep } from "lodash";
+
 const formConfig: any = {
   inline: false,
   labelPosition: "right",
@@ -212,6 +214,31 @@ export default class Home extends Vue {
   })
   formValue: any;
 
+  @Watch("formItem",{immediate:true})
+  formValueChange(newVal,oldVal){
+    newVal.forEach(item=>{
+       if(typeof this.formValue_[item.prop] === "undefined"){
+        const val = item.value;
+        const type = typeof item.value;
+        if(type === "object"){
+          this.formValue_[item.prop] = cloneDeep(val);
+        }else if (type === "undefined"){
+          this.formValue_[item.prop] = this.getDefaultVal(item.type);
+        }else{
+          this.formValue_[item.prop] = val;
+        }
+      }
+    })
+    console.log(this.formValue_) 
+  }
+  @Watch("formValue",{immediate:true})
+  formItemChange(newVal,oldVal){
+    this.formValue_ = {
+      ...this.formValue_,
+      ...newVal
+    }
+    console.log(this.formValue_) 
+  }
   @Watch("formConfig")
   changeVal(data) {
     this.formConfigVal = {
@@ -225,12 +252,16 @@ export default class Home extends Vue {
   onSubmitForm(data: any) {}
   @Emit()
   onFormChange(data: any) {}
+
+  
   formConfigVal = formConfig;
+  formValue_: any = {};
+
   mounted() {
     this.changeVal(this.formConfig);
   }
   changeFile(arr: any, value: any) {
-    this.formValue[value] = arr;
+    this.formValue_[value] = arr;
   }
   updated() {
   }
@@ -268,7 +299,7 @@ export default class Home extends Vue {
   submitForm() {
     (this.$refs.ruleForm as Form).validate((valid, error) => {
       if (valid) {
-        this.onSubmitForm(this.formValue);
+        this.onSubmitForm(this.formValue_);
       } else {
         this.onSubmitError(error);
         return false;
@@ -276,7 +307,7 @@ export default class Home extends Vue {
     });
   }
   handleBtnClick() {
-    this.onFormChange(this.formValue);
+    this.onFormChange(this.formValue_);
     this.submitForm();
   }
   resetForm() {
@@ -287,8 +318,27 @@ export default class Home extends Vue {
   }
   handleItemChange(data, item: any) {
     item.change &&
-      item.change(data, this.formValue, this.formItem, this.formConfig);
-    this.onFormChange(this.formValue);
+      item.change(data, this.formValue_, this.formItem, this.formConfig);
+    this.onFormChange(this.formValue_);
+  }
+   getDefaultVal(type){
+    switch(type){
+      case "select":
+      case "radio":
+      case "password":
+      case "cascader":
+      case "search":
+        return ""
+      case "checkbox":
+      case "upload":
+        return []
+      case "date":
+        return +new Date();
+      case "dates":
+        return [+new Date() - 30 * 24 * 60 * 60 * 1000, +new Date()];
+      default :
+        return ""
+    }
   }
 }
 </script>
